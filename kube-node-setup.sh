@@ -23,6 +23,22 @@
 
 
 # ============================================================================
+# [0단계] 스왑(swap) 비활성화
+# ============================================================================
+# kubelet 은 기본적으로 스왑이 켜진 노드에서 동작을 거부한다(또는 경고 후 실패).
+# 이유: 메모리 압박 상황에서 커널이 페이지를 스왑으로 밀어내면 파드의 requests /
+#       limits 기반 스케줄링 가정이 깨지고, 레이턴시 예측성이 무너지기 때문이다.
+# 따라서 kubeadm init / join 이전에 스왑을 반드시 끈다.
+#
+#   - swapoff -a : 지금 마운트되어 있는 모든 스왑 영역을 즉시 내림 (일시적, 리부트하면 원복).
+#   - /etc/fstab : 재부팅 시 자동 마운트되는 swap 라인을 주석 처리해 영구적으로 비활성화.
+#                  Ubuntu 기본 이미지의 /swap.img 항목처럼 fs 타입 필드가 "swap"인 줄을 잡아 '#' 를 붙인다.
+# 결과는 [4단계] 리포트의 `swapon --show` 가 빈 출력을 내야 정상.
+sudo swapoff -a
+sudo sed -i.bak '/\sswap\s/s/^\(.*\)$/#\1/' /etc/fstab
+
+
+# ============================================================================
 # [1단계] 쿠버네티스 apt 저장소 등록 + kubelet/kubeadm/kubectl + containerd 설치
 # ============================================================================
 # 다음 지침은 쿠버네티스 v1.35에 대한 것이다.
@@ -140,3 +156,70 @@ cat /etc/containerd/config.toml | grep -i disable
 
 # 바뀐 config.toml 을 적용하려면 containerd 데몬을 재시작해야 한다.
 sudo systemctl restart containerd
+
+
+# ============================================================================
+# [4단계] 결과 리포트
+# ============================================================================
+# 여기까지 왔으면 전제 조건 세팅은 끝난 상태. 실제로 "제대로 깔렸는지"를
+# 눈으로 확인할 수 있게 핵심 항목의 버전 / 상태를 한 화면에 정리해 찍는다.
+# 이 블록은 상태 "조회"만 하고 시스템을 변경하지 않는다.
+#
+# 점검 포인트:
+#   - kubeadm / kubelet / kubectl : 세 바이너리 모두 v1.35.x 로 동일한지.
+#   - containerd / runc           : CRI 런타임과 저수준 런타임이 정상 설치되었는지.
+#   - containerd systemd 서비스   : active (running) 상태인지.
+#   - kubelet systemd 서비스      : enable --now 가 반영되어 activating/active 인지
+#                                   (kubeadm init/join 전에는 CrashLoop 정상 — 설정 대기 상태).
+#   - swapon --show               : [0단계] 스왑 비활성화가 정상적으로 적용되어 빈 출력이어야 함.
+#   - br_netfilter / overlay      : [2단계] 커널 모듈이 로드되어 있는지.
+#   - sysctl 핵심 3종             : [2단계] 네트워크 파라미터가 1 로 반영되었는지.
+echo
+echo "============================================================================"
+echo "[4단계] 결과 리포트"
+echo "============================================================================"
+
+echo
+echo "--- 쿠버네티스 바이너리 버전 ---"
+# 각 바이너리는 사용하는 플래그가 조금씩 다르다:
+#   kubeadm  : `version` 서브커맨드가 긴 형식, `--short` 가 한 줄 요약 (deprecated 경고 있음).
+#   kubelet  : `--version` (하이픈 두 개) 한 줄 출력.
+#   kubectl  : 서버가 없을 때 --client 로 클라이언트 버전만 찍는 것이 안전.
+kubeadm version -o short  || true
+kubelet --version         || true
+kubectl version --client  || true
+
+echo
+echo "--- 컨테이너 런타임 버전 ---"
+# containerd 는 --version, runc 는 --version 으로 버전 문자열을 각각 출력한다.
+# runc 는 containerd 의 의존 패키지로 함께 설치된다.
+containerd --version || true
+runc --version       || true
+
+echo
+echo "--- systemd 서비스 상태 ---"
+# is-active 는 한 단어(active/inactive/activating/failed)만 반환 → 한눈에 상태를 보기 좋다.
+# kubelet 은 kubeadm init/join 전까지는 설정이 부족해 CrashLoop 이 정상이다.
+echo -n "containerd : "; systemctl is-active containerd || true
+echo -n "kubelet    : "; systemctl is-active kubelet    || true
+
+echo
+echo "--- 스왑 상태 (swapon --show: 비어 있으면 정상) ---"
+# swapon --show 는 활성화된 스왑이 없으면 아무것도 출력하지 않는다.
+# 즉, "빈 출력 = [0단계] 성공" 이라는 뜻.
+swapon --show || true
+
+echo
+echo "--- 커널 모듈 로드 확인 ---"
+# lsmod 출력에서 모듈 이름이 보이면 현재 세션에 로드된 것.
+lsmod | grep -E 'br_netfilter|overlay' || true
+
+echo
+echo "--- sysctl 네트워크 파라미터 ---"
+# 세 값 모두 1 이어야 쿠버네티스 네트워킹 전제가 충족된 상태.
+sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward || true
+
+echo
+echo "============================================================================"
+echo "리포트 끝 — 위 출력에서 버전 / active / 빈 swapon / 모듈 로드 / sysctl=1 을 확인하세요."
+echo "============================================================================"

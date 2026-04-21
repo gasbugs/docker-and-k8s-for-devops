@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "project": "docker-and-k8s-for-devops",
+  "last_updated": "2026-04-21",
+  "features": [
+    {
+      "id": "feat-001",
+      "name": "create-k8s-vms.sh 존(ZONE) CLI 인자 지원",
+      "description": "create-k8s-vms.sh가 CLI 인자 또는 환경변수로 ZONE을 지정받도록 한다. 예: `./create-k8s-vms.sh --zone us-west1-c` 또는 `ZONE=us-west1-c ./create-k8s-vms.sh`. 인자 미지정 시 기존 기본값(us-west1-b) 유지.",
+      "priority": "high",
+      "passes": true,
+      "notes": "검증 방법: 인자/환경변수/기본값 3가지 케이스에서 최종 ZONE 출력이 일치하는지 확인. 증거 필요: tests/e2e/test_feat-001.sh 실행 로그."
+    },
+    {
+      "id": "feat-002",
+      "name": "gke-startup.sh 존(ZONE) CLI 인자 지원",
+      "description": "gke-startup.sh가 CLI 인자 또는 환경변수로 ZONE을 지정받도록 한다. 예: `./gke-startup.sh --zone us-central1-a` 또는 `ZONE=us-central1-a ./gke-startup.sh`. 인자 미지정 시 기존 기본값(us-central1-c) 유지.",
+      "priority": "high",
+      "passes": true,
+      "notes": "검증 방법: 인자/환경변수/기본값 3가지 케이스에서 최종 ZONE 출력이 일치하는지 확인. 증거 필요: tests/e2e/test_feat-002.sh 실행 로그."
+    },
+    {
+      "id": "feat-003",
+      "name": "README.md 작성",
+      "description": "세 개의 스크립트(create-k8s-vms.sh, gke-startup.sh, kube-node-setup.sh)의 목적, 사전 조건, 사용법, 인자/환경변수, 기본값을 한국어로 정리한 README.md를 프로젝트 루트에 생성한다.",
+      "priority": "medium",
+      "passes": true,
+      "notes": "검증 방법: README.md에 각 스크립트 섹션과 사용 예가 존재. 증거 필요: tests/e2e/test_feat-003.sh 실행 로그."
+    }
+  ]
+}

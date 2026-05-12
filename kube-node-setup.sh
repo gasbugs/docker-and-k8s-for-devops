@@ -1,7 +1,7 @@
 # ============================================================================
 # kube-node-setup.sh
 # ----------------------------------------------------------------------------
-# 목적: Ubuntu(데비안 계열) VM에서 쿠버네티스 v1.35 컨트롤플레인/워커 노드로
+# 목적: Ubuntu(데비안 계열) VM에서 쿠버네티스 v1.36 컨트롤플레인/워커 노드로
 #       동작하는 데 필요한 "공통 전제 조건"을 준비하는 스크립트.
 #
 # 이 스크립트가 하는 일(크게 3단계):
@@ -41,8 +41,8 @@ sudo sed -i.bak '/\sswap\s/s/^\(.*\)$/#\1/' /etc/fstab
 # ============================================================================
 # [1단계] 쿠버네티스 apt 저장소 등록 + kubelet/kubeadm/kubectl + containerd 설치
 # ============================================================================
-# 다음 지침은 쿠버네티스 v1.35에 대한 것이다.
-# 마이너 버전을 바꾸려면 아래 URL의 `v1.35` 부분을 원하는 버전으로 수정하면 된다.
+# 다음 지침은 쿠버네티스 v1.36에 대한 것이다.
+# 마이너 버전을 바꾸려면 아래 URL의 `v1.36` 부분을 원하는 버전으로 수정하면 된다.
 
 # apt 패키지 인덱스를 최신화. 이어지는 install 명령이 신선한 메타데이터를 보도록.
 sudo apt-get update
@@ -65,15 +65,15 @@ sudo mkdir -p -m 755 /etc/apt/keyrings
 # 키 자체에는 영향이 없다.
 # curl 로 받은 ASCII armored 키를 gpg --dearmor 로 바이너리 키링으로 변환해서 저장한다.
 # 이 키링은 아래 sources.list.d/kubernetes.list 의 [signed-by=...] 가 참조한다.
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.35/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
-# 쿠버네티스 apt 리포지터리를 추가한다. 이 리포지터리에는 v1.35 패키지만 들어 있다.
+# 쿠버네티스 apt 리포지터리를 추가한다. 이 리포지터리에는 v1.36 패키지만 들어 있다.
 # 다른 마이너 버전을 쓰려면 URL 의 버전 문자열을 바꿔야 하며, 설치 대상 버전의 공식
 # 문서를 함께 확인하는 것이 안전하다.
 # [signed-by=...] 로 방금 받은 키링을 지정 → 이 저장소는 해당 키로만 검증된다.
 # tee 는 `sudo echo > ...` 가 리다이렉션 단계에서 권한 오류를 내는 문제를 피하기 위한 관용구.
 # (이 명령은 /etc/apt/sources.list.d/kubernetes.list 기존 내용을 덮어쓴다.)
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.36/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
 # 방금 추가한 저장소를 반영하도록 apt 색인을 다시 최신화.
 sudo apt-get update
@@ -166,7 +166,7 @@ sudo systemctl restart containerd
 # 이 블록은 상태 "조회"만 하고 시스템을 변경하지 않는다.
 #
 # 점검 포인트:
-#   - kubeadm / kubelet / kubectl : 세 바이너리 모두 v1.35.x 로 동일한지.
+#   - kubeadm / kubelet / kubectl : 세 바이너리 모두 v1.36.x 로 동일한지.
 #   - containerd / runc           : CRI 런타임과 저수준 런타임이 정상 설치되었는지.
 #   - containerd systemd 서비스   : active (running) 상태인지.
 #   - kubelet systemd 서비스      : enable --now 가 반영되어 activating/active 인지
